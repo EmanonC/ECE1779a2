@@ -187,9 +187,15 @@ def upload():
                 file_id = candidate_file.id
 
                 # save photos locally
+
                 original_name = 'app/static/original/' + name + '.' + ext
                 target_file = 'app/static/processed/' + name + '.' + ext
-                file.save(os.path.join('app/static/original/', name + '.' + ext))
+                if os.path.isdir('app/static/original'):
+                    file.save(os.path.join(original_name))
+                else:
+                    os.mkdir('app/static/original')
+                    os.mkdir('app/static/processed')
+                    file.save(os.path.join(original_name))
                 east_location = "app/frozen_east_text_detection.pb"
 
                 # run the text detector and store the new image in the corresponding directory
@@ -205,6 +211,9 @@ def upload():
                 s3.upload_file(target_file, 'chaoshuai', username + '/processed/' + name + '.' + ext)
                 os.remove('app/static/original/' + name + '.' + ext)
                 os.remove('app/static/processed/' + name + '.' + ext)
+                if os.path.isdir('app/static/original'):
+                    os.rmdir('app/static/original')
+                    os.rmdir('app/static/processed')
         return render_template('upload_success.html')
     return render_template('upload2.html')
 

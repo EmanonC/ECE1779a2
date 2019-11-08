@@ -11,7 +11,11 @@ import boto3
 app.config["allowed_img"] = ["png", "jpg", "jpeg", "fig"]
 # the maximum image size is 10m
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
-app.secret_key = os.urandom(24)
+
+key = boto3.resource('s3')
+obj = key.Object('chaoshuai', 'key.txt')
+app.secret_key = obj.get()['Body'].read().decode('utf-8')
+
 db.create_all()
 
 
@@ -269,7 +273,6 @@ def delete(img_id):
     return redirect(url_for('preview'))
 
 
-
 @app.route('/api/register', methods=["POST", "GET"])
 def api_register():
     username = request.form.get('username')
@@ -356,7 +359,6 @@ def api_upload():
         os.remove('app/static/original/' + name + '.' + ext)
         os.remove('app/static/processed/' + name + '.' + ext)
         return "201, upload success!"
-
 
 
 @app.errorhandler(413)

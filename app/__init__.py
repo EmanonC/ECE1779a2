@@ -1,5 +1,6 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+import boto3
 
 dia = 'mysql'
 dri = 'pymysql'

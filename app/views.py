@@ -190,7 +190,7 @@ def upload():
                 # save photos locally
                 original_name = 'app/static/original/' + name + '.' + ext
                 target_file = 'app/static/processed/' + name + '.' + ext
-                file.save(os.path.join('app/static/original/', name + '.' + ext))
+                file.save(original_name)
                 east_location = "app/frozen_east_text_detection.pb"
 
                 # run the text detector and store the new image in the corresponding directory

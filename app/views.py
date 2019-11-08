@@ -251,7 +251,7 @@ def fullImg(img_id):
                                       Params={'Bucket': 'chaoshuai',
                                               'Key': current_user.username + '/processed/' + img_id,
                                               })
-    print(url_2)
+    # print(url_2)
     return render_template('full_img2.html', original=url_1, processed=url_2)
 
 
@@ -270,9 +270,23 @@ def api_register():
     candidate_user = model.User(username=username, password=password)
     db.session.add(candidate_user)
     db.session.commit()
-    os.system('cd app/static/users && mkdir ' + username)
-    os.system('cd app/static/users/' + username + ' && mkdir ' + 'original')
-    os.system('cd app/static/users/' + username + ' && mkdir ' + 'processed')
+
+    s3 = boto3.client('s3')
+    s3.put_object(
+        Bucket='chaoshuai',
+        Body='',
+        Key=username + '/'
+    )
+    s3.put_object(
+        Bucket='chaoshuai',
+        Body='',
+        Key=username + '/' + 'original/'
+    )
+    s3.put_object(
+        Bucket='chaoshuai',
+        Body='',
+        Key=username + '/' + 'processed/'
+    )
     return "201, user created!"
 
 
@@ -307,19 +321,27 @@ def api_upload():
         name, ext = filename.rsplit(".", 1)
         name = str(candidate_file.id)
         file_id = candidate_file.id
-        original_name = 'app/static/users/' + username + '/original/' + name + '.' + ext
-        new_img_name = 'app/static/users/' + username + '/processed/' + name + '.' + ext
-        file.save(os.path.join("app/static/users/" + username + '/original/', name + '.' + ext))
+
+        original_name = 'app/static/original/' + name + '.' + ext
+        target_file = 'app/static/processed/' + name + '.' + ext
+        file.save(os.path.join('app/static/original/', name + '.' + ext))
         east_location = "app/frozen_east_text_detection.pb"
+
         # run the text detector and store the new image in the corresponding directory
         try:
-            text_detection.process_image(original_name, east_location, new_img_name)
+            text_detection.process_image(original_name, east_location, target_file)
         except ValueError:
-            os.remove("app/static/users/" + username + '/original/' + name + '.' + ext)
+            os.remove('app/static/original/' + name + '.' + ext)
             model.Image.query.filter_by(id=file_id).delete()
             db.session.commit()
             return "406, not a valid file"
+        s3 = boto3.client('s3')
+        s3.upload_file(original_name, 'chaoshuai', username + '/original/' + name + '.' + ext)
+        s3.upload_file(target_file, 'chaoshuai', username + '/processed/' + name + '.' + ext)
+        os.remove('app/static/original/' + name + '.' + ext)
+        os.remove('app/static/processed/' + name + '.' + ext)
         return "201, upload success!"
+
 
 
 @app.errorhandler(413)

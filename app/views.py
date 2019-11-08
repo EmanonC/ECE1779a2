@@ -156,7 +156,6 @@ def user():
 def upload():
     # if the user are not logged in, redirect to the login page
     if 'user' not in session:
-        flash('You are not logged in!')
         return redirect(url_for('index'))
     username = session['user']
     # verify the extension of the image which users want to upload
@@ -253,6 +252,21 @@ def fullImg(img_id):
                                               })
     # print(url_2)
     return render_template('full_img2.html', original=url_1, processed=url_2)
+
+
+@app.route('/delete/<img_id>')
+def delete(img_id):
+    if 'user' not in session:
+        return redirect(url_for('index'))
+    image_id = int(img_id.split('.')[0])
+    model.Image.query.filter_by(id=image_id).delete()
+    db.session.commit()
+    s3 = boto3.client('s3')
+    username = session['user']
+    s3.delete_object(Bucket='chaoshuai', Key=username + '/original/' + img_id)
+    s3.delete_object(Bucket='chaoshuai', Key=username + '/processed/' + img_id)
+    return redirect(url_for('preview'))
+
 
 
 @app.route('/api/register', methods=["POST", "GET"])

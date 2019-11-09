@@ -261,6 +261,7 @@ def fullImg(img_id):
 
 @app.route('/delete/<img_id>')
 def delete(img_id):
+    # remove the image record in the database and the image itself in the s3 bucket
     if 'user' not in session:
         return redirect(url_for('index'))
     image_id = int(img_id.split('.')[0])
@@ -278,12 +279,18 @@ def api_register():
     username = request.form.get('username')
     password = request.form.get('password')
     if not isinstance(username, str) or not 2 <= len(username) <= 100:
-        return "406, invalid username!"
+        return jsonify(message="invalid username!",
+                       code=406)
+
     if not isinstance(username, str) or not 2 <= len(password) <= 100:
-        return "406, invalid password!"
+        return jsonify(message="invalid password!",
+                       code=406)
+
     dup_user = model.User.query.filter_by(username=username).first()
     if dup_user is not None:
-        return "406, username already exists!"
+        return jsonify(message="username already exists!",
+                       code=406)
+
     password = generate_password_hash(password + username)
     candidate_user = model.User(username=username, password=password)
     db.session.add(candidate_user)
@@ -305,7 +312,8 @@ def api_register():
         Body='',
         Key=username + '/' + 'processed/'
     )
-    return "201, user created!"
+    return jsonify(message="user created!",
+                   code=201)
 
 
 @app.route('/api/upload', methods=["POST", "GET"])
@@ -315,20 +323,27 @@ def api_upload():
     try:
         file = request.files['file']
     except RequestEntityTooLarge:
-        return "406, file too big!"
+        return jsonify(message="file too big!",
+                       code=406)
     if not isinstance(username, str) or not 2 <= len(username) <= 100:
-        return "406, invalid username or password!"
+        return jsonify(message="invalid username or password!",
+                       code=406)
     if not isinstance(username, str) or not 2 <= len(password) <= 100:
-        return "406, invalid username or password!"
+        return jsonify(message="invalid username or password!",
+                       code=406)
     candidate_user = model.User.query.filter_by(username=username).first()
     if candidate_user is None:
-        return "406, invalid username or password!"
+        return jsonify(message="invalid username or password!",
+                       code=406)
     if not check_password_hash(candidate_user.password, password + username):
-        return "406, invalid username or password!"
+        return jsonify(message="invalid username or password!",
+                       code=406)
     if file.filename == "":
-        return "406, Image must have a filename"
+        return jsonify(message="Image must have a filename!",
+                       code=406)
     if not allowed_img(file.filename):
-        return "406, That image extension is not allowed!"
+        return jsonify(message="That image extension is not allowed!",
+                       code=406)
     else:
         filename = secure_filename(file.filename)
         uploader = model.User.query.filter_by(username=username).first()
@@ -352,15 +367,18 @@ def api_upload():
             os.remove('app/static/original/' + name + '.' + ext)
             model.Image.query.filter_by(id=file_id).delete()
             db.session.commit()
-            return "406, not a valid file"
+            return jsonify(message="Invalid file!",
+                           code=406)
         s3 = boto3.client('s3')
         s3.upload_file(original_name, 'chaoshuai', username + '/original/' + name + '.' + ext)
         s3.upload_file(target_file, 'chaoshuai', username + '/processed/' + name + '.' + ext)
         os.remove('app/static/original/' + name + '.' + ext)
         os.remove('app/static/processed/' + name + '.' + ext)
-        return "201, upload success!"
+        return jsonify(message="Upload success!",
+                       code=201)
 
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
-    return "413, File too big!"
+    return jsonify(message="File too big!",
+                   code=413)

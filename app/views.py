@@ -65,18 +65,22 @@ def Uploadhttpcounts():
             ],
             Namespace='SITE/TRAFFIC'
         )
-    global httpcnt
-    global timestamp
-    dt=datetime.now()
-    if timestamp.minute!=dt.minute or timestamp.hour!=dt.hour:
-            print('hahahahahaha',httpcnt)
-            r = requests.get("http://169.254.169.254/latest/dynamic/instance-identity/document")
-            r=r.json()
-            instanceid=r.get('instanceId')
-            makeupload(dt=dt,count=httpcnt,instanceid=instanceid)
-            httpcnt=0
-            timestamp=dt
-    httpcnt+=1
+    try:
+        global httpcnt
+        global timestamp
+        dt=datetime.now()
+        if timestamp.minute!=dt.minute or timestamp.hour!=dt.hour:
+                print('hahahahahaha',httpcnt)
+                r = requests.get("http://169.254.169.254/latest/dynamic/instance-identity/document")
+                r=r.json()
+                instanceid=r.get('instanceId')
+                makeupload(dt=dt,count=httpcnt,instanceid=instanceid)
+                httpcnt=0
+                timestamp=dt
+        httpcnt+=1
+    except:
+        httpcnt = 0
+        timestamp = 0
 
 @app.route('/', methods=["GET", "POST"])
 def index():
@@ -302,8 +306,21 @@ def fullImg(img_id):
                                               'Key': current_user.username + '/processed/' + img_id,
                                               })
     # print(url_2)
-    return render_template('full_img2.html', original=url_1, processed=url_2)
+    return render_template('full_img2.html', original=url_1, processed=url_2, img_id=img_id)
 
+
+@app.route('/fullSize/<directory>/<img_id>/')
+def fullSize(directory, img_id):
+    if 'user' not in session:
+        flash('You are not logged in!')
+        return redirect(url_for('index'))
+    # print(directory, img_id)
+    s3 = boto3.client('s3')
+    current_user = model.User.query.filter_by(username=session['user']).first()
+    url = s3.generate_presigned_url('get_object',
+                                    Params={'Bucket': 'chaoshuai',
+                                            'Key': current_user.username + '/' + directory + '/' + img_id})
+    return render_template('full_view.html', url=url)
 
 @app.route('/delete/<img_id>')
 def delete(img_id):
